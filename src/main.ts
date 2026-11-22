@@ -1,9 +1,8 @@
 import './style.css'
 import type { Booking, BookingStatus } from './models/booking'
 import { initialBookings } from './models/booking'
-import { legacyCard, updateLegacy } from './legacy-card'
 import { mountLab } from './lab'
-// А1: импортируйте модуль регистрации. А5: импортируйте тип BookingCard.
+import { BookingCard } from './components/booking-card'
 
 const app = document.querySelector<HTMLDivElement>('#app')!
 app.innerHTML = `
@@ -23,6 +22,7 @@ app.innerHTML = `
       <p>Независимый образец: события считаются, но данные приложения не меняются.</p><div id="lab"></div></section>
     <footer>Перезагрузка возвращает исходные данные. Инструкция и критерии находятся в README.md.</footer>
   </main>`
+
 let bookings = initialBookings()
 const all = document.querySelector<HTMLElement>('#all')!
 const confirmed = document.querySelector<HTMLElement>('#confirmed')!
@@ -35,15 +35,15 @@ const message = document.querySelector<HTMLElement>('#message')!
 let received = 0
 
 function makeCard(booking: Booking): HTMLElement {
-  // А5: создайте booking-card и передайте booking вместо обычной карточки.
-  return legacyCard(booking, setBookingStatus)
-}
-function updateCard(card: HTMLElement, booking: Booking) {
-  // А5: обновляйте публичное свойство booking.
-  updateLegacy(card, booking)
+  const card = document.createElement('booking-card') as BookingCard
+  card.booking = booking
+  return card
 }
 
-// Готовая синхронизация сохраняет экземпляры по id. Переписывать её не требуется.
+function updateCard(card: HTMLElement, booking: Booking) {
+  (card as BookingCard).booking = booking
+}
+
 const allCards = new Map<string, HTMLElement>()
 const confirmedCards = new Map<string, HTMLElement>()
 function sync(target: HTMLElement, cards: Map<string, HTMLElement>, rows: Booking[]) {
@@ -76,11 +76,13 @@ lists.addEventListener('booking-status-request', (event) => {
   const { id, nextStatus } = detail
   if (typeof id !== 'string' || (nextStatus !== 'new' && nextStatus !== 'confirmed')) return
   if (!bookings.some(row => row.id === id)) return
-  // Считаем каждый корректный запрос, в том числе повторный: дубли не скрываются.
+  
   received += 1
   events.textContent = String(received)
-  // А5: примените запрос готовой функцией setBookingStatus.
+  
+  setBookingStatus(id, nextStatus)
 })
+
 form.addEventListener('submit', (event) => {
   event.preventDefault()
   const data = new FormData(form)
@@ -94,5 +96,6 @@ form.addEventListener('submit', (event) => {
   bookings.push({ id: crypto.randomUUID(), name: name.trim(), seats, status: 'new', source: 'web' })
   renderLists(); form.reset(); message.textContent = 'Заявка добавлена.'
 })
+
 mountLab(document.querySelector<HTMLElement>('#lab')!)
 renderLists()
